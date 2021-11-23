@@ -3,10 +3,19 @@ name: docker ci
 on:
   push:
 
+env:
+  IMAGE_NAME: ${{ github.repository }}
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+      - run: echo TAG_NAME=`date +%s` >> $GITHUB_ENV
       - name: build
-        run: docker build . --file Dockerfile --tag boilerplate-docker:$(date +%s)
+        run: docker build . --file Dockerfile --tag ${{ env.IMAGE_NAME }}:${TAG_NAME}
+      - name: Container Structure Tests
+        uses: plexsystems/container-structure-test-action@v0.2.0
+        with:
+          image: ${{ env.IMAGE_NAME }}:${TAG_NAME}
+          config: tests/basic.test.yml
