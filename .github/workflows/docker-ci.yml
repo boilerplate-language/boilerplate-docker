@@ -3,10 +3,25 @@ name: docker ci
 on:
   push:
 
+env:
+  IMAGE_NAME: ${{ github.repository }}
+  TAG_NAME: $(date +%s)
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
       - name: build
-        run: docker build . --file Dockerfile --tag boilerplate-docker:$(date +%s)
+        run: docker build . --file Dockerfile --tag ${{ env.IMAGE_NAME }}:${{ env.TAG_NAME }}
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: build
+        run: docker build . --file Dockerfile --tag ${{ env.IMAGE_NAME }}:${{ env.TAG_NAME }}
+      - name: Container Structure Tests
+        uses: brpaz/structure-tests-action@v1.1.2
+        with:
+          image: ${{ env.IMAGE_NAME }}:${{ env.TAG_NAME }}
+          configFile: tests/basic.test.yml
