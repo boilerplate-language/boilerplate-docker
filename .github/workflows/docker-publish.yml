@@ -1,13 +1,13 @@
-name: Docker
+name: docker publish
 
 on:
   schedule:
-    - cron: '33 9 * * *'
+    - cron: "33 9 * * *"
   push:
-    branches: [ main ]
-    tags: [ 'v*.*.*' ]
+    branches: [main]
+    tags: ["v*.*.*"]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 env:
   REGISTRY: ghcr.io
