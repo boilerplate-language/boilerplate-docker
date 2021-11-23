@@ -13,9 +13,9 @@ jobs:
       - uses: actions/checkout@v2
       - run: echo TAG_NAME=`date +%s` >> $GITHUB_ENV
       - name: build
-        run: docker build . --file Dockerfile --tag ${{ env.IMAGE_NAME }}:${ TAG_NAME }
+        run: docker build . --file Dockerfile --tag ${{ env.IMAGE_NAME }}:${TAG_NAME}
       - name: Container Structure Tests
         uses: brpaz/structure-tests-action@v1.1.2
         with:
-          image: ${{ env.IMAGE_NAME }}:${ TAG_NAME }
+          image: ${{ env.IMAGE_NAME }}:${TAG_NAME}
           configFile: tests/basic.test.yml
