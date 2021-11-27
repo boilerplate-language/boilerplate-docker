@@ -10,3 +10,9 @@ jobs:
       - uses: actions/checkout@v2
       - name: build
         run: docker build . --file Dockerfile --tag boilerplate-docker:$(date +%s)
+
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: scan by docker benchmark
+        uses: sysdiglabs/benchmark-dockerfile@v1.0.0
