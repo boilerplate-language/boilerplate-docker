@@ -26,7 +26,7 @@ jobs:
         uses: sysdiglabs/benchmark-dockerfile@v1.0.0
 
       - name: output docker benchmark scan results
-        run: echo $violation_report | jq '.cis_docker_benchmark_violation_report'
+        run: echo $violation_report
 
       - name: scan by trivy
         uses: aquasecurity/trivy-action@0.2.0
