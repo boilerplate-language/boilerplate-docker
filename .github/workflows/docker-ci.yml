@@ -17,8 +17,10 @@ jobs:
   scan:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v2
+
       - name: build
-        run: docker build -t ${{ env.IMAGE_NAME }}:${{ github.sha }} .
+        run: docker build . --file Dockerfile --tag ${{ env.IMAGE_NAME }}:${{ github.sha }} .
 
       - name: scan by docker benchmark
         uses: sysdiglabs/benchmark-dockerfile@v1.0.0
