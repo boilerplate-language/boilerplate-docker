@@ -23,10 +23,11 @@ jobs:
         run: docker build . --file Dockerfile --tag ${{ env.IMAGE_NAME }}:${{ github.sha }}
 
       - name: scan by docker benchmark
+        id: benchmark_dockerfile
         uses: sysdiglabs/benchmark-dockerfile@v1.0.0
 
       - name: output docker benchmark scan results
-        run: echo $violation_report
+        run: echo ${{ steps.benchmark_dockerfile.outputs.violation_report }} | jq '.cis_docker_benchmark_violation_report'
 
       - name: scan by trivy
         uses: aquasecurity/trivy-action@0.2.0
