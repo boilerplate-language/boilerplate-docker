@@ -17,8 +17,6 @@ stages:
 .build-template: &build-template
   stage: build
   image: docker:latest
-  rules:
-    - if: '$CI_COMMIT_BRANCH == "main"'
   services:
     - docker:dind
   before_script:
@@ -33,6 +31,8 @@ build:
 publish:
   <<: *build-template
   stage: publish
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
   after_script:
     - docker push "$CI_REGISTRY_IMAGE${tag}"
 
