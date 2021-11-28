@@ -2,6 +2,7 @@ stages:
   - build
   - test
   - security
+  - publish
 
 .generate-tag-script: &generate-tag-script
   - |
@@ -13,7 +14,7 @@ stages:
       echo "Running on branch '$CI_COMMIT_BRANCH': tag = $tag"
     fi
 
-build:
+.build-template: &build-template
   stage: build
   image: docker:latest
   rules:
@@ -25,6 +26,14 @@ build:
   script:
     - *generate-tag-script
     - docker build --pull -t "$CI_REGISTRY_IMAGE${tag}" .
+
+build:
+  <<: *build-template
+
+publish:
+  <<: *build-template
+  stage: publish
+  after_script:
     - docker push "$CI_REGISTRY_IMAGE${tag}"
 
 container-structure-test:
