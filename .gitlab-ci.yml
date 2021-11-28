@@ -31,10 +31,11 @@ build:
 publish:
   <<: *build-template
   stage: publish
-  rules:
-    - if: '$CI_COMMIT_BRANCH == "main"'
   after_script:
     - docker push "$CI_REGISTRY_IMAGE${tag}"
+  only:
+    - main
+    - tags
 
 container-structure-test:
   stage: test
