@@ -1,0 +1,113 @@
+stages:
+  - build
+  - test
+  - security
+
+.generate-tag-script: &generate-tag-script
+  - |
+    if [[ "$CI_COMMIT_BRANCH" == "$CI_DEFAULT_BRANCH" ]]; then
+      tag=""
+      echo "Running on default branch '$CI_DEFAULT_BRANCH': tag = 'latest'"
+    else
+      tag=":$CI_COMMIT_REF_SLUG"
+      echo "Running on branch '$CI_COMMIT_BRANCH': tag = $tag"
+    fi
+
+build:
+  stage: build
+  image: docker:latest
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+  services:
+    - docker:dind
+  before_script:
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
+  script:
+    - *generate-tag-script
+    - docker build --pull -t "$CI_REGISTRY_IMAGE${tag}" .
+    - docker push "$CI_REGISTRY_IMAGE${tag}"
+
+container-structure-test:
+  stage: test
+  image:
+    name: dockdevsecops/container-structure-test:latest
+    entrypoint: [""]
+  variables:
+    REPORT_FILE: container-structure-test.xml
+  before_script:
+    - *generate-tag-script
+  script:
+    - /bin/container-structure-test test --image $CI_REGISTRY_IMAGE${tag} --config tests/basic.test.yml --output junit --test-report ${REPORT_FILE}
+  artifacts:
+    when: always
+    reports:
+      junit:
+        - ${REPORT_FILE}
+
+docker-bench-security:
+  stage: security
+  image: docker:latest
+  services:
+    - docker:dind
+  before_script:
+    - *generate-tag-script
+  script:
+    # container image の検査だけ行う。
+    - docker run --rm --net host --pid host --userns host --cap-add audit_control
+      -e DOCKER_CONTENT_TRUST=$DOCKER_CONTENT_TRUST
+      -v /etc:/etc:ro
+      -v /usr/bin/containerd:/usr/bin/containerd:ro
+      -v /usr/bin/runc:/usr/bin/runc:ro
+      -v /usr/lib/systemd:/usr/lib/systemd:ro
+      -v /var/lib:/var/lib:ro
+      -v /var/run/docker.sock:/var/run/docker.sock:ro
+      -v ${MOUNT_POINT}:/mnt
+      --label docker_bench_security
+      docker/docker-bench-security
+      -c check_4,check_4_2,check_4_3,check_4_4,check_4_5,check_4_6,check_4_7,check_4_8,check_4_9,check_4_10
+      -l /mnt/docker-bench-security.log
+      -t $CI_REGISTRY_IMAGE${tag} | tee docker-bench-security.log
+  artifacts:
+    paths:
+      - docker-bench-security.*
+
+###############################################################################################
+# ref https://medium.com/alterway/adding-image-security-scanning-to-a-ci-cd-pipeline-2faff072d
+#
+#
+
+.trivy-template: &trivy-template
+  stage: security
+  image:
+    name: aquasec/trivy:latest
+    entrypoint: [""]
+  services:
+    - docker:dind
+  before_script:
+    - *generate-tag-script
+  script:
+    # Build report
+    - trivy --exit-code 0 --cache-dir .trivycache/ --no-progress --format template --template "@/contrib/gitlab.tpl" -o trivy-report.json $CI_REGISTRY_IMAGE${tag}
+    - trivy --exit-code 0 --cache-dir .trivycache/ --no-progress --output trivy-report.log $CI_REGISTRY_IMAGE${tag}
+    # Print report
+    - trivy --exit-code 0 --cache-dir .trivycache/ --no-progress --severity HIGH $CI_REGISTRY_IMAGE${tag}
+    # Fail on high and critical vulnerabilities$CI_REGISTRY_IMAGE${tag}
+    - trivy --exit-code 1 --cache-dir .trivycache/ --severity CRITICAL --no-progress $CI_REGISTRY_IMAGE${tag}
+  cache:
+    paths:
+      - .trivycache/
+  artifacts:
+    paths:
+      - trivy-report.*
+
+trivy:
+  <<: *trivy-template
+  except:
+    variables:
+      - $SCHEDULED_PIPELINE
+
+trivy:on-schedule:
+  <<: *trivy-template
+  only:
+    variables:
+      - $SCHEDULED_PIPELINE == "security_scan"
